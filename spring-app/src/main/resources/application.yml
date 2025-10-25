@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bpmn-analytics
+  elasticsearch:
+    uris: http://elasticsearch:9200
+
+elasticsearch:
+  url: http://elasticsearch:9200
+
+camunda:
+  bpm:
+    admin-user:
+      id: admin
+      password: admin
+    filter:
+      create: All tasks
+    database:
+      type: h2
+    migration:
+      enabled: false
+
+# Логирование
+logging:
+  level:
+    com.example.bpmnanalytics: DEBUG
+    org.camunda: INFO
+    org.elasticsearch: INFO

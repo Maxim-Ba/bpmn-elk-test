@@ -1,0 +1,54 @@
+
+services:
+  elasticsearch:
+    image:  elasticsearch:8.9.0 
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - app-network
+
+  kibana:
+    image: kibana:8.9.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+
+  camunda:
+    image: camunda/camunda-bpm-platform:latest
+    environment:
+      - DB_DRIVER=org.h2.Driver
+      - DB_URL=jdbc:h2:./camunda-h2-database
+      - DB_USERNAME=sa
+      - DB_PASSWORD=sa
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+
+  spring-boot-app:
+    build: 
+      context: ./../spring-app
+      dockerfile: Dockerfile
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_URL=http://camunda:8080
+    ports:
+      - "8081:8080"
+    depends_on:
+      - elasticsearch
+      - camunda
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
