@@ -24,6 +24,7 @@ services:
 
   camunda:
     image: camunda/camunda-bpm-platform:latest
+    command: ["./camunda.sh", "--webapps", "--rest", "--swaggerui"]
     environment:
       - DB_DRIVER=org.h2.Driver
       - DB_URL=jdbc:h2:./camunda-h2-database

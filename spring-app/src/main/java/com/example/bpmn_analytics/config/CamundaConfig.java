@@ -10,7 +10,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
-@EnableTransactionManagement // Добавьте эту аннотацию
+@EnableTransactionManagement
 public class CamundaConfig {
     
     @Bean
