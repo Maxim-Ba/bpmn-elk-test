@@ -17,4 +17,6 @@ public class ElasticsearchConfig extends ElasticsearchConfiguration {
             .connectedTo(elasticsearchUrl.replace("http://", ""))
             .build();
     }
+
+
 }

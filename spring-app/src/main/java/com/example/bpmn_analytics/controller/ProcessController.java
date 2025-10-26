@@ -1,12 +1,18 @@
 package com.example.bpmn_analytics.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.bpmn_analytics.service.CamundaService;
+import com.example.bpmn_analytics.dto.HistoricProcessInstanceDto;
+import com.example.bpmn_analytics.dto.ProcessDefinitionDto;
+import com.example.bpmn_analytics.dto.ProcessInstanceDto;
+import com.example.bpmn_analytics.service.CamundaRestService;
 import com.example.bpmn_analytics.service.ElasticsearchService;
 
 @RestController
@@ -17,27 +23,37 @@ public class ProcessController {
     private ElasticsearchService elasticsearchService;
     
     @Autowired
-    private CamundaService camundaService;
-    
+    private CamundaRestService camundaRestService;
+
     @PostMapping("/start")
     public ProcessStartResponse startProcess(
             @RequestParam String processDefinitionKey,
             @RequestParam String method,
             @RequestParam String endpoint,
-            @RequestParam(required = false) String parameters) {
-        
-        // 1. Логируем запрос в Elasticsearch
+            @RequestParam(required = false) String parameters,
+            @RequestParam(defaultValue = "demoUser") String initiator) {
+
         String logId = elasticsearchService.logRequest(method, endpoint, parameters);
-        
-        // 2. Запускаем процесс в Camunda
-        String processInstanceId = camundaService.startProcess(processDefinitionKey, logId);
-         // 3. Обновляем лог с ID процесса
+        String processInstanceId = camundaRestService.startProcess(processDefinitionKey, logId, initiator);
         elasticsearchService.updateLogWithProcessInstanceId(logId, processInstanceId);
         
         return new ProcessStartResponse(processInstanceId, logId);
     }
     
-    // DTO для ответа
+    @GetMapping("/active")
+    public List<ProcessInstanceDto> getActiveProcesses() {
+        return camundaRestService.getActiveProcessInstances();
+    }
+
+    @GetMapping("/historic")
+    public List<HistoricProcessInstanceDto> getHistoricProcesses() {
+        return camundaRestService.getHistoricProcessInstances();
+    }
+
+    @GetMapping("/definitions")
+    public List<ProcessDefinitionDto> getProcessDefinitions() {
+        return camundaRestService.getProcessDefinitions();
+    }
     public static class ProcessStartResponse {
         private String processInstanceId;
         private String logId;
@@ -46,9 +62,13 @@ public class ProcessController {
             this.processInstanceId = processInstanceId;
             this.logId = logId;
         }
-        
-        // Геттеры
-        public String getProcessInstanceId() { return processInstanceId; }
-        public String getLogId() { return logId; }
+        public String getProcessInstanceId() {
+            return processInstanceId;
+        }
+
+        public String getLogId() {
+            return logId;
+        }
     }
+
 }

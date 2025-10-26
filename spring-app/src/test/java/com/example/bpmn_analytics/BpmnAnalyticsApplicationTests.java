@@ -5,7 +5,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.example.bpmn_analytics.repository.RequestLogRepository;
-import com.example.bpmn_analytics.service.CamundaService;
 import com.example.bpmn_analytics.service.ElasticsearchService;
 
 @SpringBootTest
@@ -17,8 +16,6 @@ class BpmnAnalyticsApplicationTests {
     @MockitoBean
     private ElasticsearchService elasticsearchService;
 
-    @MockitoBean
-    private CamundaService camundaService;
 
     @Test
     void contextLoads() {

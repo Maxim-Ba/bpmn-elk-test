@@ -2,6 +2,15 @@ server:
   port: 8080
 
 spring:
+  datasource:
+    url: jdbc:h2:mem:camunda;DB_CLOSE_DELAY=-1
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
   application:
     name: bpmn-analytics
   elasticsearch:
@@ -11,16 +20,21 @@ elasticsearch:
   url: http://elasticsearch:9200
 
 camunda:
-  bpm:
-    admin-user:
-      id: admin
-      password: admin
-    filter:
-      create: All tasks
-    database:
-      type: h2
-    migration:
-      enabled: false
+  rest:
+    url: http://camunda:8080/engine-rest
+  # bpm:
+  #   admin-user:
+  #     id: admin
+  #     password: admin
+  #   filter:
+  #     create: All tasks
+  #   database:
+  #     type: h2
+  #     schema-update: true
+  #   migration:
+  #     enabled: false
+  #   auto-deployment-enabled: true
+  #   deployment-resource-pattern: "**/*.bpmn,**/*.bpmn20.xml"
 
 # Логирование
 logging:

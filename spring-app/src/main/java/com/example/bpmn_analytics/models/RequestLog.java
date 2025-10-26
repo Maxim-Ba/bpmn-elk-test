@@ -1,9 +1,11 @@
 package com.example.bpmn_analytics.models;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
 
 @Document(indexName = "request_logs")
 public class RequestLog {
@@ -12,7 +14,10 @@ public class RequestLog {
     private String method;
     private String endpoint;
     private String parameters;
-    private LocalDateTime timestamp;
+
+    @Field(type = FieldType.Date)
+    private Instant timestamp;
+
     private String processInstanceId;
     
     public RequestLog() {}
@@ -21,7 +26,7 @@ public class RequestLog {
         this.method = method;
         this.endpoint = endpoint;
         this.parameters = parameters;
-        this.timestamp = LocalDateTime.now();
+        this.timestamp = Instant.now();
 
     }
     
@@ -33,8 +38,13 @@ public class RequestLog {
     public void setEndpoint(String endpoint) { this.endpoint = endpoint; }
     public String getParameters() { return parameters; }
     public void setParameters(String parameters) { this.parameters = parameters; }
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
+    }
     public String getProcessInstanceId() { return processInstanceId; }
     public void setProcessInstanceId(String processInstanceId) { this.processInstanceId = processInstanceId; }
 }
