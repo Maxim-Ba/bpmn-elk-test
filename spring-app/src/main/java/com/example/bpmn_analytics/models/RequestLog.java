@@ -7,7 +7,10 @@ import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Document(indexName = "request_logs")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class RequestLog {
    @Id
     private String id;

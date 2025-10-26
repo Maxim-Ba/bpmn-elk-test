@@ -79,4 +79,25 @@ public class LogController {
         Pageable pageable = PageRequest.of(page, size);
         return elasticsearchService.getAllLogsWithPagination(pageable);
     }
+
+    /**
+     * Поиск через нативный Elasticsearch REST API
+     */
+    @PostMapping("/search/multiple/native")
+    public List<RequestLog> searchLogsByMultipleNative(
+            @RequestBody List<SearchCriteria> searchCriteria,
+            @RequestParam(defaultValue = "AND") String operator) {
+        return elasticsearchService.searchByMultipleFieldsNative(searchCriteria, operator);
+    }
+
+    /**
+     * Расширенный поиск с выбором типа запроса
+     */
+    @PostMapping("/search/multiple/advanced")
+    public List<RequestLog> searchLogsAdvanced(
+            @RequestBody List<SearchCriteria> searchCriteria,
+            @RequestParam(defaultValue = "AND") String operator,
+            @RequestParam(defaultValue = "WILDCARD") String queryType) {
+        return elasticsearchService.advancedSearchNative(searchCriteria, operator, queryType);
+    }
 }
