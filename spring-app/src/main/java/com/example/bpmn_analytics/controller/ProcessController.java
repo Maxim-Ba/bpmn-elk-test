@@ -125,8 +125,7 @@ public class ProcessController {
 
     @PostMapping("/errors")
     public ResponseEntity<Void> handleError(@RequestBody ErrorRequest error) {
-        logger.error("Reciev error from Camunda: {}", error);
-        // Логируем ошибку, отправляем уведомление и т.д.
+        logger.info("Receive error from Camunda: {}", error);
         return ResponseEntity.ok().build();
     }
 
