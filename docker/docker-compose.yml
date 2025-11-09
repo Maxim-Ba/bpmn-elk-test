@@ -30,21 +30,30 @@ services:
       - DB_URL=jdbc:h2:./camunda-h2-database
       - DB_USERNAME=sa
       - DB_PASSWORD=sa
+      - LOGGING_LEVEL_ORG_CAMUNDA=DEBUG
+      - LOGGING_LEVEL_ROOT=INFO
+      - REST_SERVICE_BASE_URL=http://host.docker.internal:8081/api/process
     ports:
       - "8080:8080"
     networks:
       - app-network
+    volumes:
+      - ./camunda-logs:/camunda/standalone/tomcat/logs
+      - ./camunda-config:/camunda/configuration
+    # extra_hosts:
+    #   - "spring-boot-app:host-gateway"
 
   spring-boot-app:
     build: 
       context: ./../spring-app
       dockerfile: Dockerfile
     environment:
+      - SPRING_PROFILES_ACTIVE=docker
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - CAMUNDA_URL=http://camunda:8080
       - CAMUNDA_REST_URL=http://camunda:8080/engine-rest
     ports:
-      - "8081:8080"
+      - "8081:8081"
     depends_on:
       - elasticsearch
       - camunda

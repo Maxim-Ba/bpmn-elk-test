@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:process id="main_process" name="Основной учебный процесс" isExecutable="true" camunda:historyTimeToLive="30">
+    <bpmn:startEvent id="StartEvent_1" name="Начало процесса" camunda:initiator="initiator">
+      <bpmn:extensionElements />
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:scriptTask id="ScriptTask_1" name="Инициализация переменных" scriptFormat="javascript">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:script>
+        execution.setVariable("processInstanceId", execution.getProcessInstanceId());
+        execution.setVariable("startTime", new Date().toString());
+        execution.setVariable("counter", 0);
+        var restServiceBaseUrl = java.lang.System.getenv("REST_SERVICE_BASE_URL");
+console.log(restServiceBaseUrl);      execution.setVariable("restServiceBaseUrl", restServiceBaseUrl );
+        execution.setVariable("initiator", "user123");
+
+        console.log("Процесс начат: " + execution.getProcessInstanceId());
+      </bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:parallelGateway id="ParallelGateway_1" name="Разделение потоков">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="ServiceTask_1" name="REST вызов моего сервиса">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}/process</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json; charset=UTF-8</camunda:entry>
+                <camunda:entry key="Accept">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="payload">
+              {
+              "processInstanceId": "${processInstanceId}",
+              "activity": "ServiceTask_1",
+              "counter": ${counter},
+              "timestamp": "${startTime}"
+              }
+            </camunda:inputParameter>
+            <camunda:outputParameter name="ServiceTask_1_response">${response}</camunda:outputParameter>
+            <camunda:outputParameter name="ServiceTask_1_statusCode">${statusCode}</camunda:outputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="ServiceTask_2" name="Второй REST вызов">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}/second-task</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json; charset=UTF-8</camunda:entry>
+                <camunda:entry key="Accept">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="payload">
+              {
+              "processInstanceId": "${processInstanceId}",
+              "task": "second"
+              }
+            </camunda:inputParameter>
+            <camunda:outputParameter name="ServiceTask_2_response">${response}</camunda:outputParameter>
+            <camunda:outputParameter name="ServiceTask_2_statusCode">${statusCode}</camunda:outputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:parallelGateway id="ParallelGateway_2" name="Синхронизация потоков">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:scriptTask id="ScriptTask_2" name="Обработка результатов" scriptFormat="javascript">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:script>console.log("=== ДОСТУПНЫЕ ПЕРЕМЕННЫЕ ПОСЛЕ ServiceTask_1 ===");
+    
+    // Получаем все переменные
+    var variables = execution.getVariables();
+    variables.keySet().forEach(function(key) {
+      var value = execution.getVariable(key);
+      console.log("Переменная: " + key + " = " + value + " (тип: " + (typeof value) + ")");
+    });
+        var restResponse = execution.getVariable("ServiceTask_1_response");
+        var secondResponse = execution.getVariable("ServiceTask_2_response");
+        var statusCode = execution.getVariable("ServiceTask_1_statusCode");
+
+        console.log("REST Response: " + restResponse);
+        console.log("Second Response: " + secondResponse);
+        console.log("Status Code: " + statusCode);
+
+        // Парсим JSON ответ если нужно
+        try {
+        var jsonResponse = JSON.parse(restResponse);
+        execution.setVariable("parsedResponse", jsonResponse);
+        } catch(e) {
+        console.log("Не удалось распарсить JSON ответ");
+        }
+
+        execution.setVariable("allTasksCompleted", true);
+        execution.setVariable("completionTime", new Date().toString());
+      </bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:callActivity id="CallActivity_1" name="Запуск подпроцесса" calledElement="sub_process">
+      <bpmn:extensionElements>
+        <camunda:in variables="all" />
+        <camunda:in source="processInstanceId" target="parentProcessId" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:endEvent id="EndEvent_1" name="Конец процесса">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="ErrorBoundary_1" name="Ошибка REST вызова" attachedToRef="ServiceTask_1">
+      <bpmn:extensionElements />
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+      <bpmn:errorEventDefinition />
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="ErrorHandler_1" name="Отправка ошибки в сервис">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}/errors</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="payload">
+              {
+              "processInstanceId": "${processInstanceId}",
+              "failedActivity": "ServiceTask_1",
+              "errorTime": "${now()}",
+              "errorDetails": "Ошибка REST вызова к сервису"
+              }
+            </camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="ErrorEndEvent_1" name="Конец с ошибкой">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ScriptTask_1" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ScriptTask_1" targetRef="ParallelGateway_1" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="ParallelGateway_1" targetRef="ServiceTask_1" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="ParallelGateway_1" targetRef="ServiceTask_2" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="ServiceTask_1" targetRef="ParallelGateway_2" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="ServiceTask_2" targetRef="ParallelGateway_2" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="ParallelGateway_2" targetRef="ScriptTask_2" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="ScriptTask_2" targetRef="CallActivity_1" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="CallActivity_1" targetRef="EndEvent_1" />
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="ErrorBoundary_1" targetRef="ErrorHandler_1" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="ErrorHandler_1" targetRef="ErrorEndEvent_1" />
+  </bpmn:process>
+  <bpmn:process id="sub_process" name="Подпроцесс" isExecutable="true" camunda:historyTimeToLive="30">
+    <bpmn:startEvent id="SubStartEvent_1" name="Начало подпроцесса">
+      <bpmn:extensionElements />
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="SubServiceTask_1" name="Задача подпроцесса">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}/subprocess</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json; charset=UTF-8</camunda:entry>
+                <camunda:entry key="Accept">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="payload">
+              {
+              "parentProcessId": "${parentProcessId}",
+              "subProcessId": "${processInstanceId}",
+              "action": "subprocess-execution"
+              }
+            </camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+      <bpmn:outgoing>Flow_13</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="SubEndEvent_1" name="Конец подпроцесса">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_13</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="SubStartEvent_1" targetRef="SubServiceTask_1" />
+    <bpmn:sequenceFlow id="Flow_13" sourceRef="SubServiceTask_1" targetRef="SubEndEvent_1" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="main_process">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="100" y="100" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ScriptTask_1_di" bpmnElement="ScriptTask_1">
+        <dc:Bounds x="200" y="78" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ParallelGateway_1_di" bpmnElement="ParallelGateway_1">
+        <dc:Bounds x="350" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="409.5" y="106" width="61" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_1_di" bpmnElement="ServiceTask_1">
+        <dc:Bounds x="450" y="30" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_2_di" bpmnElement="ServiceTask_2">
+        <dc:Bounds x="280" y="310" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ParallelGateway_2_di" bpmnElement="ParallelGateway_2">
+        <dc:Bounds x="600" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="585" y="57.5" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ScriptTask_2_di" bpmnElement="ScriptTask_2">
+        <dc:Bounds x="700" y="78" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_1_di" bpmnElement="CallActivity_1">
+        <dc:Bounds x="850" y="78" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="1000" y="100" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ErrorHandler_1_di" bpmnElement="ErrorHandler_1">
+        <dc:Bounds x="453" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ErrorEndEvent_1_di" bpmnElement="ErrorEndEvent_1">
+        <dc:Bounds x="485" y="352" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="459" y="388" width="88" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ErrorBoundary_1_di" bpmnElement="ErrorBoundary_1">
+        <dc:Bounds x="485" y="92" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="513" y="146" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="136" y="118" />
+        <di:waypoint x="200" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="300" y="118" />
+        <di:waypoint x="350" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="375" y="95" />
+        <di:waypoint x="375" y="70" />
+        <di:waypoint x="450" y="70" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="375" y="145" />
+        <di:waypoint x="375" y="198" />
+        <di:waypoint x="330" y="198" />
+        <di:waypoint x="330" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="550" y="45" />
+        <di:waypoint x="575" y="45" />
+        <di:waypoint x="575" y="120" />
+        <di:waypoint x="600" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="330" y="390" />
+        <di:waypoint x="330" y="470" />
+        <di:waypoint x="625" y="470" />
+        <di:waypoint x="625" y="145" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="650" y="120" />
+        <di:waypoint x="700" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="800" y="118" />
+        <di:waypoint x="850" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="950" y="118" />
+        <di:waypoint x="1000" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
+        <di:waypoint x="503" y="128" />
+        <di:waypoint x="503" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11">
+        <di:waypoint x="503" y="320" />
+        <di:waypoint x="503" y="352" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
