@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.bpmn_analytics.client.CamundaClient;
 import com.example.bpmn_analytics.dto.ErrorRequest;
 import com.example.bpmn_analytics.dto.HistoricProcessInstanceDto;
 import com.example.bpmn_analytics.dto.ProcessDefinitionDto;
@@ -31,13 +32,16 @@ import com.example.bpmn_analytics.service.ElasticsearchService;
 @RestController
 @RequestMapping("/api/process")
 public class ProcessController {
+
     private static final Logger logger = LoggerFactory.getLogger(ProcessController.class);
 
     @Autowired
     private ElasticsearchService elasticsearchService;
-    
+
     @Autowired
     private CamundaRestService camundaRestService;
+    @Autowired
+    private CamundaClient camundaClient;
 
     @PostMapping("/start")
     public ProcessStartResponse startProcess(
@@ -50,10 +54,10 @@ public class ProcessController {
         String logId = elasticsearchService.logRequest(method, endpoint, parameters);
         String processInstanceId = camundaRestService.startProcess(processDefinitionKey, logId, initiator);
         elasticsearchService.updateLogWithProcessInstanceId(logId, processInstanceId);
-        
+
         return new ProcessStartResponse(processInstanceId, logId);
     }
-    
+
     @GetMapping("/active")
     public List<ProcessInstanceDto> getActiveProcesses() {
         return camundaRestService.getActiveProcessInstances();
@@ -68,14 +72,17 @@ public class ProcessController {
     public List<ProcessDefinitionDto> getProcessDefinitions() {
         return camundaRestService.getProcessDefinitions();
     }
+
     public static class ProcessStartResponse {
+
         private String processInstanceId;
         private String logId;
-        
+
         public ProcessStartResponse(String processInstanceId, String logId) {
             this.processInstanceId = processInstanceId;
             this.logId = logId;
         }
+
         public String getProcessInstanceId() {
             return processInstanceId;
         }
@@ -135,5 +142,75 @@ public class ProcessController {
         return ResponseEntity.ok(Map.of("subprocessStatus", "COMPLETED"));
     }
 
+    @PostMapping("/condition")
+    public ResponseEntity<Map<String, Object>> handleConditionCheck() {
+        logger.info("/condition: Checking condition for gateway");
+
+        // Возвращаем случайное булево значение для выбора пути
+        boolean conditionResult = Math.random() > 0.5;
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("conditionResult", conditionResult);
+        response.put("timestamp", new Date());
+        response.put("message", conditionResult ? "Условие истинно - идем по верхнему пути" : "Условие ложно - идем по нижнему пути");
+
+        logger.info("Condition check result: {}", conditionResult);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/properties")
+    public ResponseEntity<Map<String, Object>> handlePropertiesTask(@RequestBody Map<String, Object> request) {
+        logger.info("/properties: Received properties task request: {}", request);
+
+        String processInstanceId = (String) request.get("processInstanceId");
+        logger.info("Processing properties for process instance: {}", processInstanceId);
+
+        // Проверяем активные активности процесса
+        try {
+            String activitiesUrl = "/process-instance/" + processInstanceId + "/activity-instances";
+            ResponseEntity<Object> activitiesResponse = camundaClient.get(activitiesUrl, Object.class);
+            logger.info("Current active activities: {}", activitiesResponse.getBody());
+        } catch (Exception e) {
+            logger.error("Failed to get active activities", e);
+        }
+
+        // Запускаем отправку BreakLoopMessage через 5 секунд
+        new Thread(() -> {
+            try {
+                logger.info("Waiting 5 seconds before sending BreakLoopMessage...");
+                Thread.sleep(5000);
+
+                // Проверяем, находится ли процесс еще в первом цикле
+                try {
+                    String activitiesUrl = "/process-instance/" + processInstanceId + "/activity-instances";
+                    ResponseEntity<Object> activitiesResponse = camundaClient.get(activitiesUrl, Object.class);
+                    logger.info("Current state before sending message: {}", activitiesResponse.getBody());
+                } catch (Exception e) {
+                    logger.error("Failed to check process state", e);
+                }
+
+                Map<String, Object> messageRequest = new HashMap<>();
+                messageRequest.put("messageName", "breakLoopMessage");
+                messageRequest.put("processInstanceId", processInstanceId);
+
+                logger.info("Attempting to send breakLoopMessage to process instance: {}", processInstanceId);
+                ResponseEntity<Object> response = camundaClient.post("/message", messageRequest, Object.class);
+                logger.info("BreakLoopMessage sent successfully. Response: {}", response.getStatusCode());
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.error("Interrupted while waiting to send BreakLoopMessage", e);
+            } catch (Exception e) {
+                logger.error("Failed to send BreakLoopMessage", e);
+            }
+        }).start();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "PROPERTIES_PROCESSED");
+        response.put("breakLoopScheduled", true);
+        response.put("scheduledTime", new Date());
+
+        return ResponseEntity.ok(response);
+    }
 
 }

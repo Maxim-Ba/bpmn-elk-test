@@ -2,3 +2,6 @@ curl -X POST http://localhost:8080/engine-rest/process-definition/{id}/start -H 
 
 
 curl -X POST http://localhost:8080/engine-rest/process-definition/key/your-process-key/start -H "Content-Type: application/json" -d '{}'
+
+
+curl -X POST http://localhost:8080/engine-rest/message -H "Content-Type: application/json" -d '{"messageName": "startEvent1", "businessKey": "test-business-key-123"}'

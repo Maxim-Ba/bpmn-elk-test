@@ -14,13 +14,16 @@
         execution.setVariable("startTime", new Date().toString());
         execution.setVariable("counter", 0);
         var restServiceBaseUrl = java.lang.System.getenv("REST_SERVICE_BASE_URL");
-console.log(restServiceBaseUrl);      execution.setVariable("restServiceBaseUrl", restServiceBaseUrl );
+        console.log(restServiceBaseUrl); execution.setVariable("restServiceBaseUrl",
+        restServiceBaseUrl );
         execution.setVariable("initiator", "user123");
 
         console.log("Процесс начат: " + execution.getProcessInstanceId());
+        var BpmnError = Java.type('org.camunda.bpm.engine.delegate.BpmnError');
+        throw new BpmnError('scriptTaskError', 'Тестовая ошибка в ScriptTask_1');
       </bpmn:script>
     </bpmn:scriptTask>
-    <bpmn:parallelGateway id="ParallelGateway_1" name="Разделение потоков">
+    <bpmn:parallelGateway id="ParallelGateway_1">
       <bpmn:extensionElements />
       <bpmn:incoming>Flow_2</bpmn:incoming>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
@@ -53,13 +56,14 @@ console.log(restServiceBaseUrl);      execution.setVariable("restServiceBaseUrl"
         </camunda:connector>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:incoming>Flow_1btcxrk</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:serviceTask id="ServiceTask_2" name="Второй REST вызов">
       <bpmn:extensionElements>
         <camunda:connector>
           <camunda:inputOutput>
-            <camunda:inputParameter name="url">${restServiceBaseUrl}/second-task</camunda:inputParameter>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}:wrong-url/second-task</camunda:inputParameter>
             <camunda:inputParameter name="method">POST</camunda:inputParameter>
             <camunda:inputParameter name="headers">
               <camunda:map>
@@ -183,14 +187,66 @@ console.log(restServiceBaseUrl);      execution.setVariable("restServiceBaseUrl"
       <bpmn:errorEventDefinition id="ErrorEventDefinition_1jrq5cd" />
     </bpmn:boundaryEvent>
     <bpmn:serviceTask id="Activity_1dl2gvf" name="Отправка ошибки в сервис">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}/errors</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="payload">
+              {
+              "processInstanceId": "${processInstanceId}",
+              "failedActivity": "ScriptTask_1",
+              "errorTime": "${now()}",
+              "errorDetails": "Ошибка REST вызова к сервису"
+              }
+            </camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_02nfprs</bpmn:incoming>
       <bpmn:outgoing>Flow_1btcxrk</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:sequenceFlow id="Flow_02nfprs" sourceRef="Event_1rmx1go" targetRef="Activity_1dl2gvf" />
-    <bpmn:endEvent id="Event_1xnbiwi">
-      <bpmn:incoming>Flow_1btcxrk</bpmn:incoming>
+    <bpmn:sequenceFlow id="Flow_1btcxrk" sourceRef="Activity_1dl2gvf" targetRef="ServiceTask_1" />
+    <bpmn:boundaryEvent id="Event_00xl9md" name="Ошибка REST вызова" attachedToRef="ServiceTask_2">
+      <bpmn:outgoing>Flow_0yiecrl</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_01lme31" />
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="Activity_1kazosi" name="Отправка ошибки в сервис">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}/errors</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="payload"> {
+              "processInstanceId": "${processInstanceId}",
+              "failedActivity": "ServiceTask_2",
+              "errorTime": "${now()}",
+              "errorDetails": "Ошибка REST вызова к сервису"
+              }</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0yiecrl</bpmn:incoming>
+      <bpmn:outgoing>Flow_1559v29</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Event_108g98n">
+      <bpmn:incoming>Flow_1559v29</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_1btcxrk" sourceRef="Activity_1dl2gvf" targetRef="Event_1xnbiwi" />
+    <bpmn:sequenceFlow id="Flow_1559v29" sourceRef="Activity_1kazosi" targetRef="Event_108g98n" />
+    <bpmn:sequenceFlow id="Flow_0yiecrl" sourceRef="Event_00xl9md" targetRef="Activity_1kazosi" />
   </bpmn:process>
   <bpmn:process id="sub_process" name="Подпроцесс" isExecutable="true" camunda:historyTimeToLive="30">
     <bpmn:startEvent id="SubStartEvent_1" name="Начало подпроцесса">
@@ -241,7 +297,7 @@ console.log(restServiceBaseUrl);      execution.setVariable("restServiceBaseUrl"
       <bpmndi:BPMNShape id="ParallelGateway_1_di" bpmnElement="ParallelGateway_1">
         <dc:Bounds x="350" y="95" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="409.5" y="106" width="61" height="27" />
+          <dc:Bounds x="344" y="144" width="61" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ServiceTask_1_di" bpmnElement="ServiceTask_1">
@@ -278,17 +334,27 @@ console.log(restServiceBaseUrl);      execution.setVariable("restServiceBaseUrl"
         <dc:Bounds x="160" y="220" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Event_1xnbiwi_di" bpmnElement="Event_1xnbiwi">
-        <dc:Bounds x="172" y="352" width="36" height="36" />
+      <bpmndi:BPMNShape id="BPMNShape_0iqk6ln" bpmnElement="Activity_1kazosi">
+        <dc:Bounds x="120" y="450" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1tjsuj5" bpmnElement="Event_108g98n">
+        <dc:Bounds x="132" y="582" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1i0corj" bpmnElement="Event_00xl9md">
+        <dc:Bounds x="312" y="372" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="340" y="426" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1rmx1go_di" bpmnElement="Event_1rmx1go">
+        <dc:Bounds x="242" y="140" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ErrorBoundary_1_di" bpmnElement="ErrorBoundary_1">
         <dc:Bounds x="485" y="92" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="513" y="146" width="74" height="27" />
         </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Event_1rmx1go_di" bpmnElement="Event_1rmx1go">
-        <dc:Bounds x="242" y="140" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
         <di:waypoint x="136" y="118" />
@@ -316,7 +382,7 @@ console.log(restServiceBaseUrl);      execution.setVariable("restServiceBaseUrl"
         <di:waypoint x="600" y="120" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
-        <di:waypoint x="330" y="390" />
+        <di:waypoint x="296" y="390" />
         <di:waypoint x="330" y="470" />
         <di:waypoint x="625" y="470" />
         <di:waypoint x="625" y="145" />
@@ -350,8 +416,21 @@ console.log(restServiceBaseUrl);      execution.setVariable("restServiceBaseUrl"
       <bpmndi:BPMNEdge id="Flow_1btcxrk_di" bpmnElement="Flow_1btcxrk">
         <di:waypoint x="210" y="300" />
         <di:waypoint x="210" y="326" />
-        <di:waypoint x="190" y="326" />
-        <di:waypoint x="190" y="352" />
+        <di:waypoint x="430" y="326" />
+        <di:waypoint x="430" y="100" />
+        <di:waypoint x="450" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_0z6p2oy" bpmnElement="Flow_1559v29">
+        <di:waypoint x="170" y="530" />
+        <di:waypoint x="170" y="556" />
+        <di:waypoint x="150" y="556" />
+        <di:waypoint x="150" y="582" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0yiecrl_di" bpmnElement="Flow_0yiecrl">
+        <di:waypoint x="330" y="408" />
+        <di:waypoint x="330" y="420" />
+        <di:waypoint x="200" y="420" />
+        <di:waypoint x="200" y="450" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

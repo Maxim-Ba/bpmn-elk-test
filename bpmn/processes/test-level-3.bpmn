@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1d2hcmz" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.20.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:message id="Message_ContinueLoop" name="continueLoopMessage" />
+  <bpmn:message id="Message_BreakLoop" name="breakLoopMessage" />
+  <bpmn:process id="Process_0gjrx3e" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:startEvent id="StartEvent_1" name="StartEvent_1">
+      <bpmn:outgoing>Flow_0j4yapr</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_0l0rdzl" messageRef="Message_28gjbtn" />
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_0j4yapr" sourceRef="StartEvent_1" targetRef="Activity_19dujrl" />
+    <bpmn:serviceTask id="Activity_18bkhm8" name="Получаем значение">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}/condition</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:outputParameter name="conditionResult">
+              <camunda:script scriptFormat="javascript">var responseObj = JSON.parse(response);
+responseObj.conditionResult;</camunda:script>
+            </camunda:outputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1g31x7k</bpmn:incoming>
+      <bpmn:outgoing>Flow_18swvbo</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_18swvbo" sourceRef="Activity_18bkhm8" targetRef="gggg" />
+    <bpmn:exclusiveGateway id="gggg" default="Flow_00fz15s">
+      <bpmn:incoming>Flow_18swvbo</bpmn:incoming>
+      <bpmn:outgoing>Flow_14c46e0</bpmn:outgoing>
+      <bpmn:outgoing>Flow_00fz15s</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_00fz15s" name="if false" sourceRef="gggg" targetRef="work" />
+    <bpmn:task id="work" name="work">
+      <bpmn:incoming>Flow_00fz15s</bpmn:incoming>
+      <bpmn:outgoing>Flow_1gz8xdq</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_1gz8xdq" sourceRef="work" targetRef="Event_14ebkub" />
+    <bpmn:endEvent id="Event_14ebkub">
+      <bpmn:incoming>Flow_1gz8xdq</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_14c46e0" name="if true" sourceRef="gggg" targetRef="Gateway_1at3rp6">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${conditionResult == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:parallelGateway id="Gateway_1at3rp6">
+      <bpmn:incoming>Flow_14c46e0</bpmn:incoming>
+      <bpmn:outgoing>Flow_0vre3vm</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1hhl9o6</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_0vre3vm" sourceRef="Gateway_1at3rp6" targetRef="LoopStart" />
+    <bpmn:scriptTask id="LoopStart" name="Инициализация цикла 1" scriptFormat="javascript">
+      <bpmn:incoming>Flow_0vre3vm</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_loop_task</bpmn:outgoing>
+      <bpmn:script>
+        execution.setVariable("loopCounter", 0);
+        execution.setVariable("maxLoops", 5);
+        execution.setVariable("continueLoop", true);
+        console.log("Инициализация цикла. Максимум итераций: " + execution.getVariable("maxLoops"));
+      </bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_to_loop_task" sourceRef="LoopStart" targetRef="LoopTask" />
+    <bpmn:task id="LoopTask" name="Логирование итерации">
+      <bpmn:incoming>Flow_to_loop_task</bpmn:incoming>
+      <bpmn:incoming>Flow_continue_loop</bpmn:incoming>
+      <bpmn:outgoing>Flow_after_loop_task</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_after_loop_task" sourceRef="LoopTask" targetRef="ProcessLoopIteration" />
+    <bpmn:scriptTask id="ProcessLoopIteration" name="Обработка итерации" scriptFormat="javascript">
+      <bpmn:incoming>Flow_after_loop_task</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_loop_gateway</bpmn:outgoing>
+      <bpmn:outgoing>Flow_optional_wait</bpmn:outgoing>
+      <bpmn:script>
+        var loopCounter = execution.getVariable("loopCounter");
+        var maxLoops = execution.getVariable("maxLoops");
+        
+        loopCounter++;
+        execution.setVariable("loopCounter", loopCounter);
+        
+        console.log("=== ИТЕРАЦИЯ ЦИКЛА ===");
+        console.log("Номер итерации: " + loopCounter);
+        console.log("Максимум итераций: " + maxLoops);
+        console.log("Ожидание сообщения для продолжения...");
+        
+        // Имитация работы
+        execution.setVariable("lastIterationTime", new Date().toString());
+        
+        // Автоматически продолжаем цикл если не достигли максимума
+        if (loopCounter &gt;= maxLoops) {
+          execution.setVariable("continueLoop", false);
+          console.log("Достигнут максимум итераций. Выход из цикла.");
+        }
+      </bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_to_loop_gateway" sourceRef="ProcessLoopIteration" targetRef="LoopGateway" />
+    <bpmn:exclusiveGateway id="LoopGateway" name="Продолжить цикл?">
+      <bpmn:incoming>Flow_to_loop_gateway</bpmn:incoming>
+      <bpmn:incoming>Flow_optional_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_continue_loop</bpmn:outgoing>
+      <bpmn:outgoing>Flow_exit_loop</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_continue_loop" name="continue" sourceRef="LoopGateway" targetRef="LoopTask">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${continueLoop == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_exit_loop" name="exit" sourceRef="LoopGateway" targetRef="Gateway_02iajoi">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${continueLoop == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:scriptTask id="BreakLoopHandler" name="Обработка прерывания" scriptFormat="javascript">
+      <bpmn:incoming>Flow_01tpxt1</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_end_after_break</bpmn:outgoing>
+      <bpmn:script>
+        console.log("Цикл прерван внешним сообщением");
+        execution.setVariable("loopInterrupted", true);
+        execution.setVariable("continueLoop", false);
+      </bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_1hhl9o6" sourceRef="Gateway_1at3rp6" targetRef="Activity_1o6p3l7" />
+    <bpmn:parallelGateway id="Gateway_02iajoi">
+      <bpmn:incoming>Flow_exit_loop</bpmn:incoming>
+      <bpmn:incoming>Flow_to_end_after_break</bpmn:incoming>
+      <bpmn:incoming>Flow_13ho7px</bpmn:incoming>
+      <bpmn:outgoing>Flow_0cf1dxc</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_0cf1dxc" sourceRef="Gateway_02iajoi" targetRef="Event_1bz4auq" />
+    <bpmn:endEvent id="Event_1bz4auq">
+      <bpmn:incoming>Flow_0cf1dxc</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_optional_wait" sourceRef="ProcessLoopIteration" targetRef="LoopGateway" />
+    <bpmn:sequenceFlow id="Flow_to_end_after_break" sourceRef="BreakLoopHandler" targetRef="Gateway_02iajoi" />
+    <bpmn:boundaryEvent id="BreakLoopMessageEvent" attachedToRef="ProcessLoopIteration">
+      <bpmn:outgoing>Flow_01tpxt1</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1sbh3lx" messageRef="Message_BreakLoop" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_01tpxt1" sourceRef="BreakLoopMessageEvent" targetRef="BreakLoopHandler" />
+    <bpmn:serviceTask id="Activity_1o6p3l7" name="получение свойств">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">${restServiceBaseUrl}/properties</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="payload">
+            {
+                "processInstanceId": "${processInstanceId}",
+                "task": "properties"
+            }
+        </camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1hhl9o6</bpmn:incoming>
+      <bpmn:outgoing>Flow_11lztto</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_11lztto" sourceRef="Activity_1o6p3l7" targetRef="LoopStart2" />
+    <bpmn:scriptTask id="LoopStart2" name="Инициализация цикла 2" scriptFormat="javascript">
+      <bpmn:incoming>Flow_11lztto</bpmn:incoming>
+      <bpmn:outgoing>Flow_00uzlq9</bpmn:outgoing>
+      <bpmn:script>execution.setVariable("loopCounter2", 0);
+console.log("!!!start loop2 !!!");</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_00uzlq9" sourceRef="LoopStart2" targetRef="ProcessLoopIteration2" />
+    <bpmn:boundaryEvent id="Event_0f6c8gd" attachedToRef="ProcessLoopIteration2">
+      <bpmn:outgoing>Flow_1pn6iix</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_0hnhipd">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT60S </bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_1pn6iix" sourceRef="Event_0f6c8gd" targetRef="Activity_0qdj9mh" />
+    <bpmn:sequenceFlow id="Flow_0yzpffu" sourceRef="ProcessLoopIteration2" targetRef="Event_1iwub2g" />
+    <bpmn:intermediateCatchEvent id="Event_1iwub2g">
+      <bpmn:incoming>Flow_0yzpffu</bpmn:incoming>
+      <bpmn:outgoing>Flow_0cctz26</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_03b9gq2">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT10S</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_0cctz26" sourceRef="Event_1iwub2g" targetRef="ProcessLoopIteration2" />
+    <bpmn:scriptTask id="ProcessLoopIteration2" name="Обработка итерации">
+      <bpmn:incoming>Flow_00uzlq9</bpmn:incoming>
+      <bpmn:incoming>Flow_0cctz26</bpmn:incoming>
+      <bpmn:outgoing>Flow_0yzpffu</bpmn:outgoing>
+      <bpmn:script> var loopCounter2 = execution.getVariable("loopCounter2");
+        
+        
+        loopCounter2 ++;
+        execution.setVariable("loopCounter2", loopCounter2 );</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Activity_0qdj9mh" name="конец цикла по таймауту" scriptFormat="javascript">
+      <bpmn:incoming>Flow_1pn6iix</bpmn:incoming>
+      <bpmn:outgoing>Flow_13ho7px</bpmn:outgoing>
+      <bpmn:script>        console.log("=== конец цыкла по таймауту ЦИКЛА ===");</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_13ho7px" sourceRef="Activity_0qdj9mh" targetRef="Gateway_02iajoi" />
+    <bpmn:scriptTask id="Activity_19dujrl" name="init vars" scriptFormat="javascript">
+      <bpmn:incoming>Flow_0j4yapr</bpmn:incoming>
+      <bpmn:outgoing>Flow_1g31x7k</bpmn:outgoing>
+      <bpmn:script>     execution.setVariable("processInstanceId", execution.getProcessInstanceId());
+        execution.setVariable("startTime", new Date().toString());
+        execution.setVariable("counter", 0);
+        var restServiceBaseUrl = java.lang.System.getenv("REST_SERVICE_BASE_URL");
+        console.log(restServiceBaseUrl); execution.setVariable("restServiceBaseUrl",
+        restServiceBaseUrl );
+        execution.setVariable("initiator", "user123");
+
+        console.log("Процесс начат: " + execution.getProcessInstanceId());</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_1g31x7k" sourceRef="Activity_19dujrl" targetRef="Activity_18bkhm8" />
+  </bpmn:process>
+  <bpmn:message id="Message_28gjbtn" name="startEvent1" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_0gjrx3e">
+      <bpmndi:BPMNShape id="Event_0wbzjn5_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="162" y="172" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="148" y="215" width="64" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_18bkhm8_di" bpmnElement="Activity_18bkhm8">
+        <dc:Bounds x="340" y="150" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0pl8r9n_di" bpmnElement="gggg" isMarkerVisible="true">
+        <dc:Bounds x="465" y="165" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1tb3xul_di" bpmnElement="work">
+        <dc:Bounds x="440" y="410" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_14ebkub_di" bpmnElement="Event_14ebkub">
+        <dc:Bounds x="472" y="552" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1at3rp6_di" bpmnElement="Gateway_1at3rp6">
+        <dc:Bounds x="635" y="165" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="LoopStart_di" bpmnElement="LoopStart">
+        <dc:Bounds x="710" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="LoopTask_di" bpmnElement="LoopTask">
+        <dc:Bounds x="850" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ProcessLoopIteration_di" bpmnElement="ProcessLoopIteration">
+        <dc:Bounds x="1000" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="LoopGateway_di" bpmnElement="LoopGateway" isMarkerVisible="true">
+        <dc:Bounds x="1150" y="165" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1128" y="226" width="64" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BreakLoopHandler_di" bpmnElement="BreakLoopHandler">
+        <dc:Bounds x="1170" y="-70" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_02iajoi_di" bpmnElement="Gateway_02iajoi">
+        <dc:Bounds x="1300" y="165" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1bz4auq_di" bpmnElement="Event_1bz4auq">
+        <dc:Bounds x="1400" y="172" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1o6p3l7_di" bpmnElement="Activity_1o6p3l7">
+        <dc:Bounds x="610" y="280" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1ha6q1o_di" bpmnElement="LoopStart2">
+        <dc:Bounds x="610" y="410" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1iwub2g_di" bpmnElement="Event_1iwub2g">
+        <dc:Bounds x="1002" y="512" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0mlzfjk_di" bpmnElement="ProcessLoopIteration2">
+        <dc:Bounds x="830" y="490" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0qdj9mh_di" bpmnElement="Activity_0qdj9mh">
+        <dc:Bounds x="1140" y="568" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_19dujrl_di" bpmnElement="Activity_19dujrl">
+        <dc:Bounds x="220" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0f6c8gd_di" bpmnElement="Event_0f6c8gd">
+        <dc:Bounds x="862" y="552" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_174mpu7_di" bpmnElement="BreakLoopMessageEvent">
+        <dc:Bounds x="1042" y="212" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0j4yapr_di" bpmnElement="Flow_0j4yapr">
+        <di:waypoint x="198" y="190" />
+        <di:waypoint x="220" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18swvbo_di" bpmnElement="Flow_18swvbo">
+        <di:waypoint x="440" y="190" />
+        <di:waypoint x="465" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00fz15s_di" bpmnElement="Flow_00fz15s">
+        <di:waypoint x="490" y="215" />
+        <di:waypoint x="490" y="410" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="474" y="346" width="32" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1gz8xdq_di" bpmnElement="Flow_1gz8xdq">
+        <di:waypoint x="490" y="490" />
+        <di:waypoint x="490" y="552" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_14c46e0_di" bpmnElement="Flow_14c46e0">
+        <di:waypoint x="515" y="190" />
+        <di:waypoint x="635" y="190" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="561" y="172" width="28" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0vre3vm_di" bpmnElement="Flow_0vre3vm">
+        <di:waypoint x="685" y="190" />
+        <di:waypoint x="710" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_loop_task_di" bpmnElement="Flow_to_loop_task">
+        <di:waypoint x="810" y="190" />
+        <di:waypoint x="850" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_after_loop_task_di" bpmnElement="Flow_after_loop_task">
+        <di:waypoint x="950" y="190" />
+        <di:waypoint x="1000" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_loop_gateway_di" bpmnElement="Flow_to_loop_gateway">
+        <di:waypoint x="1100" y="190" />
+        <di:waypoint x="1150" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_continue_loop_di" bpmnElement="Flow_continue_loop">
+        <di:waypoint x="1175" y="165" />
+        <di:waypoint x="1175" y="100" />
+        <di:waypoint x="900" y="100" />
+        <di:waypoint x="900" y="150" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1000" y="80" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_exit_loop_di" bpmnElement="Flow_exit_loop">
+        <di:waypoint x="1200" y="190" />
+        <di:waypoint x="1300" y="190" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1230" y="203" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1hhl9o6_di" bpmnElement="Flow_1hhl9o6">
+        <di:waypoint x="660" y="215" />
+        <di:waypoint x="660" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0cf1dxc_di" bpmnElement="Flow_0cf1dxc">
+        <di:waypoint x="1350" y="190" />
+        <di:waypoint x="1400" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0kqscs8_di" bpmnElement="Flow_optional_wait">
+        <di:waypoint x="1100" y="190" />
+        <di:waypoint x="1150" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0jnk9k2_di" bpmnElement="Flow_to_end_after_break">
+        <di:waypoint x="1270" y="-30" />
+        <di:waypoint x="1325" y="-30" />
+        <di:waypoint x="1325" y="165" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_01tpxt1_di" bpmnElement="Flow_01tpxt1">
+        <di:waypoint x="1060" y="248" />
+        <di:waypoint x="1060" y="268" />
+        <di:waypoint x="1120" y="268" />
+        <di:waypoint x="1120" y="-30" />
+        <di:waypoint x="1170" y="-30" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11lztto_di" bpmnElement="Flow_11lztto">
+        <di:waypoint x="660" y="360" />
+        <di:waypoint x="660" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00uzlq9_di" bpmnElement="Flow_00uzlq9">
+        <di:waypoint x="660" y="490" />
+        <di:waypoint x="660" y="530" />
+        <di:waypoint x="830" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1pn6iix_di" bpmnElement="Flow_1pn6iix">
+        <di:waypoint x="880" y="588" />
+        <di:waypoint x="880" y="608" />
+        <di:waypoint x="1140" y="608" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0yzpffu_di" bpmnElement="Flow_0yzpffu">
+        <di:waypoint x="930" y="530" />
+        <di:waypoint x="1002" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0cctz26_di" bpmnElement="Flow_0cctz26">
+        <di:waypoint x="1038" y="530" />
+        <di:waypoint x="1060" y="530" />
+        <di:waypoint x="1060" y="430" />
+        <di:waypoint x="880" y="430" />
+        <di:waypoint x="880" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13ho7px_di" bpmnElement="Flow_13ho7px">
+        <di:waypoint x="1240" y="608" />
+        <di:waypoint x="1325" y="608" />
+        <di:waypoint x="1325" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1g31x7k_di" bpmnElement="Flow_1g31x7k">
+        <di:waypoint x="320" y="190" />
+        <di:waypoint x="340" y="190" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
